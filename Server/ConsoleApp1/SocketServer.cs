@@ -1,5 +1,6 @@
 ﻿using System.Net.Sockets;
 using System.Net;
+using System.Reflection;
 
 namespace ConsoleApp1
 {
@@ -7,16 +8,26 @@ namespace ConsoleApp1
     {   
         public delegate void ClientConnected(Socket ConnectedClient);
         public event ClientConnected OnClientConnectedEvent;
-
         private Socket socketserver;
+        private bool SocketCreateError = false;
 
-        public SocketServer()
+        public SocketServer(string ipaddress)
         {
             this.socketserver = server();
-            IPEndPoint iep = SetIpDetail("172.0.2.131", 81);
+            IPEndPoint iep = SetIpDetail(ipaddress, 81);
             Console.WriteLine("[i] Server created: " + iep as string);
-            socketserver.Bind(iep);
-            socketserver.Listen(1000);
+            try
+            {
+                socketserver.Bind(iep);
+                socketserver.Listen(1000);
+            }
+            catch
+            {
+                Console.WriteLine(@"[ERROR] - IpAddress is not valid.");
+                Console.WriteLine(@"[ERROR] - IpAddress """ + ipaddress + @""" is not in valid context. it need to be taken from ""ipconfig"" command at cmd");
+                File.Delete(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\ipaddress.txt");
+                this.SocketCreateError = true;
+            }
         }
 
 
@@ -35,9 +46,12 @@ namespace ConsoleApp1
 
 
         
-        public void AcceptClients()
+        public bool AcceptClients()
         {
-            while(true)
+            if (SocketCreateError)
+                return true;
+
+            while (true)
             {
                 Socket client = this.socketserver.Accept();
                 OnClientConnectedEvent.Invoke(client);
